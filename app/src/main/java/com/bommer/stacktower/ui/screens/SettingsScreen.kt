@@ -1,7 +1,7 @@
 package com.bommer.stacktower.ui.screens
 
 import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.animateColorAsState
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
