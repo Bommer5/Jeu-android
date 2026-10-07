@@ -2,6 +2,7 @@ package com.bommer.stacktower.game
 
 import android.content.Context
 import android.media.AudioAttributes
+import android.media.MediaPlayer
 import android.media.SoundPool
 import java.io.File
 import java.io.FileOutputStream
@@ -29,15 +30,38 @@ class SoundFx(context: Context) {
     private val place: Int
     private val fail: Int
     private val coin: Int
+    private val click: Int
+    private val levelUp: Int
+    private val tick: Int
     private val perfect: IntArray
+    private val musicPath: String
+    private var music: MediaPlayer? = null
 
     var enabled = true
+
+    /** Musique d'ambiance activée (réglage joueur). */
+    var musicEnabled = false
+        set(value) {
+            field = value
+            refreshMusic()
+        }
+
+    /** Faux quand l'activité est en arrière-plan. */
+    var foreground = false
+        set(value) {
+            field = value
+            refreshMusic()
+        }
 
     init {
         val dir = File(context.cacheDir, "sfx").apply { mkdirs() }
         place = pool.load(write(dir, "place", tone(220.0, 0.09, decay = 40.0, noise = 0.25)), 1)
         fail = pool.load(write(dir, "fail", sweep(330.0, 90.0, 0.45)), 1)
         coin = pool.load(write(dir, "coin", chime(listOf(988.0, 1319.0), 0.08)), 1)
+        click = pool.load(write(dir, "click", tone(660.0, 0.05, decay = 60.0)), 1)
+        tick = pool.load(write(dir, "tick", tone(1200.0, 0.025, decay = 120.0, noise = 0.3)), 1)
+        levelUp = pool.load(write(dir, "levelup", chime(listOf(523.25, 659.25, 783.99, 1046.5), 0.09)), 1)
+        musicPath = write(dir, "music", ambientLoop())
         // Gamme pentatonique : la note monte avec le combo.
         val scale = doubleArrayOf(523.25, 587.33, 659.25, 783.99, 880.0, 1046.5, 1174.66, 1318.51, 1567.98, 1760.0)
         perfect = IntArray(scale.size) { i ->
@@ -48,17 +72,76 @@ class SoundFx(context: Context) {
     fun place() = play(place, 0.7f)
     fun fail() = play(fail, 0.8f)
     fun coin() = play(coin, 0.6f)
+    fun click() = play(click, 0.5f)
+    fun tick() = play(tick, 0.35f)
+    fun levelUp() = play(levelUp, 0.8f)
     fun perfect(combo: Int) = play(perfect[min(combo - 1, perfect.size - 1).coerceAtLeast(0)], 0.8f)
 
     private fun play(id: Int, vol: Float) {
         if (enabled) pool.play(id, vol, vol, 1, 0, 1f)
     }
 
-    fun release() = pool.release()
+    private fun refreshMusic() {
+        val shouldPlay = musicEnabled && foreground
+        if (shouldPlay) {
+            val player = music ?: runCatching {
+                MediaPlayer().apply {
+                    setDataSource(musicPath)
+                    isLooping = true
+                    setVolume(0.35f, 0.35f)
+                    prepare()
+                }
+            }.getOrNull()?.also { music = it }
+            if (player != null && !player.isPlaying) player.start()
+        } else {
+            music?.let { if (it.isPlaying) it.pause() }
+        }
+    }
+
+    fun release() {
+        pool.release()
+        music?.release()
+        music = null
+    }
+
+    /** Boucle d'ambiance douce : nappe d'accords + arpège (Lam - Fa - Do - Sol). */
+    private fun ambientLoop(): ShortArray {
+        val chords = listOf(
+            doubleArrayOf(220.0, 261.63, 329.63),
+            doubleArrayOf(174.61, 220.0, 261.63),
+            doubleArrayOf(261.63, 329.63, 392.0),
+            doubleArrayOf(196.0, 246.94, 293.66),
+        )
+        val chordDur = 2.4
+        val chordLen = (rate * chordDur).toInt()
+        val out = DoubleArray(chordLen * chords.size)
+        chords.forEachIndexed { c, notes ->
+            val base = c * chordLen
+            for (i in 0 until chordLen) {
+                val t = i.toDouble() / rate
+                val env = min(1.0, t / 0.6) * min(1.0, (chordDur - t) / 0.6)
+                var s = 0.0
+                for (f in notes) s += sin(2 * PI * f * t) + 0.3 * sin(2 * PI * f * 2 * t + 0.5)
+                out[base + i] += s * env * 0.09
+            }
+            // Arpège : 8 notes par accord
+            val step = chordLen / 8
+            for (k in 0 until 8) {
+                val f = notes[k % notes.size] * if (k >= 4) 4.0 else 2.0
+                for (i in 0 until (rate * 0.35).toInt()) {
+                    val j = base + k * step + i
+                    if (j >= out.size) break
+                    val t = i.toDouble() / rate
+                    out[j] += sin(2 * PI * f * t) * exp(-t * 9.0) * min(1.0, t / 0.005) * 0.12
+                }
+            }
+        }
+        return ShortArray(out.size) { (out[it].coerceIn(-1.0, 1.0) * Short.MAX_VALUE).toInt().toShort() }
+    }
 
     // --- Synthèse -------------------------------------------------------------
 
-    private val rate = 22050
+
 
     private fun tone(
         freq: Double, dur: Double, decay: Double, noise: Double = 0.0, harmonics: Boolean = false,
@@ -110,5 +193,9 @@ class SoundFx(context: Context) {
         pcm.forEach { data.putShort(it) }
         FileOutputStream(f).use { it.write(data.array()) }
         return f.absolutePath
+    }
+
+    private companion object {
+        const val rate = 22050
     }
 }

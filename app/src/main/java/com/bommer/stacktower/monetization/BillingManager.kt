@@ -15,14 +15,14 @@ import com.android.billingclient.api.Purchase
 import com.android.billingclient.api.PurchasesUpdatedListener
 import com.android.billingclient.api.QueryProductDetailsParams
 import com.android.billingclient.api.QueryPurchasesParams
-import com.bommer.stacktower.BuildConfig
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
 /**
  * Achats intégrés Google Play :
- *  - [BuildConfig.IAP_REMOVE_ADS] : non consommable, supprime les interstitiels et bannières ;
- *  - [BuildConfig.IAP_COIN_PACK] : consommable, ajoute [COIN_PACK_AMOUNT] pièces.
+ *  - [REMOVE_ADS] : non consommable, supprime les interstitiels et bannières ;
+ *  - [COIN_PACKS] : consommables, ajoutent des pièces.
+ * Les identifiants doivent être créés à l'identique dans la Play Console.
  */
 class BillingManager(
     context: Context,
@@ -57,7 +57,7 @@ class BillingManager(
     }
 
     private fun queryProducts() {
-        val ids = listOf(BuildConfig.IAP_REMOVE_ADS, BuildConfig.IAP_COIN_PACK)
+        val ids = listOf(REMOVE_ADS) + COIN_PACKS.map { it.productId }
         val params = QueryProductDetailsParams.newBuilder()
             .setProductList(ids.map {
                 QueryProductDetailsParams.Product.newBuilder()
@@ -99,7 +99,7 @@ class BillingManager(
     private fun handle(purchase: Purchase) {
         if (purchase.purchaseState != Purchase.PurchaseState.PURCHASED) return
         val products = purchase.products
-        if (BuildConfig.IAP_REMOVE_ADS in products) {
+        if (REMOVE_ADS in products) {
             onRemoveAds()
             if (!purchase.isAcknowledged) {
                 client.acknowledgePurchase(
@@ -107,18 +107,31 @@ class BillingManager(
                 ) { }
             }
         }
-        if (BuildConfig.IAP_COIN_PACK in products) {
+        val coins = COIN_PACKS.filter { it.productId in products }.sumOf { it.coins }
+        if (coins > 0) {
             // On crédite seulement après une consommation réussie, pour éviter tout double crédit.
             client.consumeAsync(ConsumeParams.newBuilder().setPurchaseToken(purchase.purchaseToken).build()) { r, _ ->
-                if (r.responseCode == BillingClient.BillingResponseCode.OK) onCoins(COIN_PACK_AMOUNT * purchase.quantity)
+                if (r.responseCode == BillingClient.BillingResponseCode.OK) onCoins(coins * purchase.quantity)
             }
         }
     }
 
+    /** Re-synchronise les achats (bouton « Restaurer les achats »). */
+    fun restore() {
+        if (client.isReady) restorePurchases() else connect()
+    }
+
     fun release() = client.endConnection()
+
+    data class CoinPack(val productId: String, val coins: Int, val label: String, val bestValue: Boolean = false)
 
     companion object {
         private const val TAG = "BillingManager"
-        const val COIN_PACK_AMOUNT = 1000
+        const val REMOVE_ADS = "remove_ads"
+        val COIN_PACKS = listOf(
+            CoinPack("coins_500", 500, "Poignée de pièces"),
+            CoinPack("coins_1500", 1500, "Sac de pièces"),
+            CoinPack("coins_5000", 5000, "Coffre au trésor", bestValue = true),
+        )
     }
 }
