@@ -13,8 +13,8 @@ L'application affiche des publicités fournies par Google AdMob. Google peut col
 l'identifiant publicitaire de l'appareil, l'adresse IP et des informations techniques afin
 d'afficher des annonces, éventuellement personnalisées, et de mesurer leurs performances.
 Dans l'Espace économique européen et au Royaume-Uni, votre consentement est demandé au premier
-lancement via la plateforme Google UMP ; vous pouvez le modifier à tout moment avec le bouton 🔒
-du menu principal.
+lancement via la plateforme Google UMP ; vous pouvez le modifier à tout moment dans
+Réglages → « Choix de confidentialité (pubs) ».
 Politique de Google : https://policies.google.com/technologies/ads
 
 ## Achats intégrés (Google Play)

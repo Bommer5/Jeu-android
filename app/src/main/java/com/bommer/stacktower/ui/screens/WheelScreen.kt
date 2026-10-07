@@ -63,7 +63,7 @@ fun WheelScreen(c: AppController, profile: Profile, rewardedReady: Boolean, onBa
     val rotation = remember { Animatable(0f) }
     var spinning by remember { mutableStateOf(false) }
     val context = LocalContext.current
-    val typeface = remember { ResourcesCompat.getFont(context, R.font.lilita_one) }
+    val wheelFont = remember { ResourcesCompat.getFont(context, R.font.lilita_one) }
     val segment = 360f / Wheel.prizes.size
 
     // Petit « tic » sonore à chaque case franchie.
@@ -134,7 +134,7 @@ fun WheelScreen(c: AppController, profile: Profile, rewardedReady: Boolean, onBa
                             )
                         }
                         val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                            this.typeface = typeface
+                            typeface = wheelFont
                             textAlign = Paint.Align.CENTER
                             textSize = r * 0.13f
                             color = Color.White.toArgb()

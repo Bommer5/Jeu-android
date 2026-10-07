@@ -1,40 +1,54 @@
 # Stack Tower 🏗️
 
-Jeu Android **hyper-casual** à un doigt : des blocs glissent de gauche à droite, touchez l'écran
-pour les poser sur la tour. Ce qui dépasse tombe, le bloc rétrécit. Un placement **parfait**
-déclenche un combo (son qui monte, particules) et, à partir de 3 parfaits d'affilée, le bloc
-s'agrandit à nouveau. La vitesse augmente avec la hauteur.
+Jeu Android **hyper-casual en 3D isométrique** : des blocs glissent alternativement sur deux
+axes, touchez l'écran pour les poser sur la tour. Ce qui dépasse tombe. Un placement **parfait**
+déclenche un combo (note qui monte, particules, flash) et, à partir de 3 parfaits d'affilée, le
+bloc s'agrandit. Plus la tour monte, plus le ciel s'assombrit vers l'espace.
 
-Le genre (Stack, Tower Bloxx…) a fait ses preuves : parties courtes, rejouabilité infinie et
-nombreuses occasions naturelles de montrer une pub, d'où un bon revenu par joueur.
+## Contenu
+
+| | |
+|---|---|
+| **5 modes** | Classique · Défi du jour (même tour pour tous, ×1,5 pièces) · Zen (sans fin) · Chrono (60 s, débloqué niv. 3) · Expert (débloqué niv. 6, ×2 pièces) |
+| **Bonus** | Ralenti, Bouclier (annule une erreur), Départ lancé (+10 étages) |
+| **Progression** | Niveaux et XP avec récompenses, 26 succès, 3 missions quotidiennes, statistiques détaillées, records par mode |
+| **Fidélisation** | Cadeau quotidien sur 7 jours (série), roue de la fortune (1 tour gratuit/jour + 3 avec vidéo) |
+| **Boutique** | 12 thèmes de couleurs, 5 styles de blocs (Classique, Verre, Néon, Rayures, Cristal), 6 décors animés (étoiles, bulles, neige, lucioles, confettis), bonus, packs de pièces |
+| **Finitions** | Tour qui se construit toute seule derrière le menu, marqueur « RECORD » dans la tour, vue d'ensemble en fin de partie, tutoriel, pause automatique, musique et sons générés, vibrations, partage du score, demande d'avis Play Store |
+| **Réglages** | Sons, musique, vibrations, particules, secousses d'écran, tutoriel, confidentialité RGPD, restauration des achats, réinitialisation |
 
 ## Comment l'app gagne de l'argent
 
 | Source | Où | Détails |
 |---|---|---|
-| **Vidéo récompensée** (AdMob) | Fin de partie, boutique | « Continuer » (1 fois par partie), « Pièces ×2 », « +50 pièces gratuites ». C'est le format qui paie le mieux, et le joueur le choisit lui-même. |
-| **Interstitiel** (AdMob) | Entre deux parties | Au plus 1 fois toutes les 3 parties **et** toutes les 90 s (`AdsManager`), pour ne pas faire fuir les joueurs. |
-| **Bannière adaptative** (AdMob) | Menu, fin de partie, boutique | Jamais pendant la partie. |
-| **Achat « Supprimer les pubs »** | Boutique | Non consommable : supprime bannières et interstitiels, garde les vidéos volontaires. |
-| **Pack de 1000 pièces** | Boutique | Consommable, pour acheter plus vite les thèmes. |
+| **Vidéo récompensée** (AdMob) | Fin de partie, roue, cadeau du jour, boutique | « Continuer », « Pièces ×2 », tours de roue bonus, doubler le cadeau, pièces gratuites. C'est le format qui rapporte le plus, et le joueur le choisit lui-même. |
+| **Interstitiel** (AdMob) | Entre deux parties | Au plus 1 fois toutes les 3 parties **et** toutes les 90 s (`AdsManager`). |
+| **Bannière adaptative** (AdMob) | Menus | Jamais pendant la partie. |
+| **« Zéro pub »** | Accueil, boutique | Achat non consommable `remove_ads`. |
+| **Packs de pièces** | Boutique | Consommables `coins_500`, `coins_1500`, `coins_5000`. |
 
-Rétention : **cadeau du jour** avec série (20 → 80 pièces), **7 thèmes** à débloquer avec les
-pièces, record personnel. Le **consentement RGPD** (Google UMP) est géré, ce qui est obligatoire
-pour diffuser des pubs en France et dans l'UE.
+L'économie (prix des thèmes jusqu'à 3 000 pièces, bonus consommables) crée la demande de pièces
+qui alimente les vidéos et les achats. Le **consentement RGPD** (Google UMP) est géré.
 
 ## Structure
 
 ```
 app/src/main/java/com/bommer/stacktower/
-├── game/StackGame.kt          moteur du jeu (Kotlin pur, testé)
-├── game/Themes.kt             thèmes de la boutique
-├── game/SoundFx.kt            sons synthétisés (aucun fichier audio ni licence)
-├── data/PlayerRepository.kt   sauvegarde (DataStore) : record, pièces, thèmes, cadeau du jour
-├── monetization/AdsManager.kt       AdMob : interstitiels plafonnés + vidéos récompensées
-├── monetization/ConsentManager.kt   consentement RGPD (UMP)
-├── monetization/BillingManager.kt   Google Play Billing 8
-└── ui/                        écrans Jetpack Compose + rendu Canvas
+├── game/StackGame.kt          moteur 3D isométrique, modes, bonus (Kotlin pur, testé)
+├── game/Cosmetics.kt          thèmes, styles de blocs, décors
+├── game/SoundFx.kt            sons + musique synthétisés (aucun fichier audio)
+├── data/Profile.kt            progression : niveaux, succès, missions, roue, boutique (testé)
+├── data/ProfileStore.kt       sauvegarde JSON (DataStore + sauvegarde Android)
+├── monetization/              AdMob, consentement UMP, Google Play Billing 8
+└── ui/
+    ├── GameRenderer.kt        rendu Canvas (blocs 3D, effets, décors, aperçus)
+    ├── AppController.kt       lien interface ↔ données / pubs / achats / son
+    ├── Root.kt                navigation + boucle d'animation
+    ├── design/Design.kt       design system (polices, boutons 3D, cartes…)
+    └── screens/               accueil, jeu, boutique, progression, roue, réglages, cadeau
 ```
+
+Polices : Lilita One et Nunito (licence SIL OFL, voir `docs/licenses/`).
 
 ## Compiler
 
@@ -57,13 +71,15 @@ En local : Android Studio (ouvrir le dossier), ou `./gradlew assembleDebug` avec
 3. **Consentement RGPD** : dans AdMob → *Confidentialité et messagerie*, créer un message RGPD
    pour l'app (sinon aucun formulaire ne s'affichera dans l'UE).
 4. **Achats intégrés** : dans la Play Console → *Monétiser* → *Produits intégrés*, créer
-   `remove_ads` (ex. 2,99 €) et `coins_1000` (ex. 0,99 €). Lier un profil de paiement.
+   `remove_ads` (ex. 2,99 €), `coins_500` (0,99 €), `coins_1500` (1,99 €) et `coins_5000`
+   (4,99 €). Lier un profil de paiement.
 5. **Signer** : générer une clé
    `keytool -genkey -v -keystore release.jks -keyalg RSA -keysize 2048 -validity 10000 -alias stacktower`,
    remplir `keystore.properties` (voir l'exemple), puis `./gradlew bundleRelease`
    et téléverser `app/build/outputs/bundle/release/app-release.aab`.
 6. **Politique de confidentialité** : compléter `docs/privacy-policy.md` et la publier
-   (GitHub Pages, Google Sites…). L'URL est obligatoire dans la fiche Play Store et dans AdMob.
+   (GitHub Pages, Google Sites…), puis mettre son URL dans `AppController.PRIVACY_URL`.
+   L'URL est obligatoire dans la fiche Play Store et dans AdMob.
 7. **Fiche Play Store** : questionnaire de classification du contenu, section *Sécurité des
    données* (déclarer l'identifiant publicitaire et les données collectées par AdMob), cocher
    « contient des annonces ». Captures d'écran et une courte vidéo de gameplay aident beaucoup
