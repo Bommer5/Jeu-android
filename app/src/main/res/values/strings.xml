@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">Auto Clicker</string>
+    <string name="service_label">Auto Clicker – clics automatiques</string>
+    <string name="service_description">Permet à Auto Clicker d\'effectuer à votre place les clics que vous configurez (zone ou point), et d\'afficher le panneau flottant. Aucune donnée n\'est lue ni collectée.</string>
+</resources>
