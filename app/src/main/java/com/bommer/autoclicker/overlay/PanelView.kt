@@ -22,6 +22,7 @@ class PanelView(
     val params: WindowManager.LayoutParams,
     private val onPlay: () -> Unit,
     private val onMode: () -> Unit,
+    private val onDraw: () -> Unit,
     private val onSettings: () -> Unit,
     private val onClose: () -> Unit,
     private val onMoved: (x: Int, y: Int) -> Unit,
@@ -29,6 +30,7 @@ class PanelView(
 
     private val play: ImageView
     private val mode: ImageView
+    private val draw: ImageView
     private val counter: TextView
 
     init {
@@ -59,6 +61,8 @@ class PanelView(
         addView(counter)
         mode = icon(R.drawable.ic_frame, 0xFF4C6FFF.toInt()).also { it.setOnClickListener { onMode() } }
         addView(mode)
+        draw = icon(R.drawable.ic_edit, 0xFF8A5CFF.toInt()).also { it.setOnClickListener { onDraw() } }
+        addView(draw)
         addView(icon(R.drawable.ic_tune, 0x33FFFFFF).also { it.setOnClickListener { onSettings() } })
         addView(icon(R.drawable.ic_close, 0x33FFFFFF).also { it.setOnClickListener { onClose() } })
     }
@@ -81,10 +85,19 @@ class PanelView(
         (play.background as GradientDrawable).setColor(if (running) 0xFFFF5B5B.toInt() else 0xFF2FC56E.toInt())
         mode.alpha = if (running) 0.4f else 1f
         mode.isEnabled = !running
+        draw.alpha = if (running) 0.4f else 1f
+        draw.isEnabled = !running
     }
 
     fun setMode(m: ClickMode) {
-        mode.setImageResource(if (m == ClickMode.ZONE) R.drawable.ic_frame else R.drawable.ic_target)
+        mode.setImageResource(
+            when (m) {
+                ClickMode.ZONE -> R.drawable.ic_frame
+                ClickMode.FREEFORM -> R.drawable.ic_lasso
+                ClickMode.POINT -> R.drawable.ic_target
+            }
+        )
+        draw.visibility = if (m == ClickMode.FREEFORM) VISIBLE else GONE
     }
 
     fun setCount(n: Long) {

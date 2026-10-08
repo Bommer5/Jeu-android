@@ -12,7 +12,9 @@ import android.os.SystemClock
 import android.view.WindowManager
 import android.view.accessibility.AccessibilityEvent
 import android.widget.Toast
+import com.bommer.autoclicker.overlay.DrawOverlay
 import com.bommer.autoclicker.overlay.PanelView
+import com.bommer.autoclicker.overlay.ShapeView
 import com.bommer.autoclicker.overlay.TargetView
 import com.bommer.autoclicker.overlay.ZoneView
 import com.bommer.autoclicker.overlay.baseFlags
@@ -39,6 +41,8 @@ class AutoClickService : AccessibilityService(), SharedPreferences.OnSharedPrefe
     private var panel: PanelView? = null
     private var zone: ZoneView? = null
     private var target: TargetView? = null
+    private var shapeView: ShapeView? = null
+    private var drawOverlay: DrawOverlay? = null
 
     private var clicks = 0L
     private var startedAt = 0L
@@ -99,9 +103,10 @@ class AutoClickService : AccessibilityService(), SharedPreferences.OnSharedPrefe
                 onPlay = { if (_running.value) stop() else start() },
                 onMode = {
                     ConfigStore.update(this) {
-                        it.copy(mode = if (it.mode == ClickMode.ZONE) ClickMode.POINT else ClickMode.ZONE)
+                        it.copy(mode = ClickMode.entries[(it.mode.ordinal + 1) % ClickMode.entries.size])
                     }
                 },
+                onDraw = { startDrawing() },
                 onSettings = {
                     stop()
                     startActivity(Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
@@ -121,22 +126,36 @@ class AutoClickService : AccessibilityService(), SharedPreferences.OnSharedPrefe
     }
 
     private fun removeOverlays() {
-        listOfNotNull(panel, zone, target).forEach { runCatching { wm.removeView(it) } }
+        listOfNotNull(panel, zone, target, shapeView, drawOverlay).forEach { runCatching { wm.removeView(it) } }
         panel = null
         zone = null
         target = null
+        shapeView = null
+        drawOverlay = null
     }
 
     private fun applyMode() {
         panel?.setMode(config.mode)
-        if (config.mode == ClickMode.ZONE) {
-            target?.let { runCatching { wm.removeView(it) } }
-            target = null
-            ensureZone()
-        } else {
+        if (config.mode != ClickMode.ZONE) {
             zone?.let { runCatching { wm.removeView(it) } }
             zone = null
-            ensureTarget()
+        }
+        if (config.mode != ClickMode.POINT) {
+            target?.let { runCatching { wm.removeView(it) } }
+            target = null
+        }
+        if (config.mode != ClickMode.FREEFORM) {
+            shapeView?.let { runCatching { wm.removeView(it) } }
+            shapeView = null
+        }
+        when (config.mode) {
+            ClickMode.ZONE -> ensureZone()
+            ClickMode.POINT -> ensureTarget()
+            ClickMode.FREEFORM -> {
+                ensureShape()
+                // Pas encore de contour : on propose directement de le dessiner.
+                if (Polygon.parse(config.shape) == null && drawOverlay == null) handler.post { startDrawing() }
+            }
         }
         // Le panneau reste au-dessus du cadre.
         panel?.let { p ->
@@ -186,6 +205,39 @@ class AutoClickService : AccessibilityService(), SharedPreferences.OnSharedPrefe
         }.also { wm.addView(it, params) }
     }
 
+    private fun ensureShape() {
+        val view = shapeView ?: ShapeView(this).also { v ->
+            val (sw, sh) = screenSize(wm)
+            val params = overlayParams(sw, sh, 0, 0, touchable = false)
+            wm.addView(v, params)
+            shapeView = v
+        }
+        view.polygon = Polygon.parse(config.shape)
+        view.running = _running.value
+    }
+
+    /** Ouvre l'écran de dessin du contour libre. */
+    fun startDrawing() {
+        if (drawOverlay != null) return
+        stop()
+        if (panel == null) showOverlays()
+        if (config.mode != ClickMode.FREEFORM) ConfigStore.update(this) { it.copy(mode = ClickMode.FREEFORM) }
+        val (sw, sh) = screenSize(wm)
+        val params = overlayParams(sw, sh, 0, 0, touchable = true)
+        val existing = Polygon.parse(config.shape)?.points ?: emptyList()
+        panel?.visibility = android.view.View.GONE
+        shapeView?.visibility = android.view.View.GONE
+        drawOverlay = DrawOverlay(this, existing) { points ->
+            drawOverlay?.let { runCatching { wm.removeView(it) } }
+            drawOverlay = null
+            panel?.visibility = android.view.View.VISIBLE
+            shapeView?.visibility = android.view.View.VISIBLE
+            if (points != null) {
+                ConfigStore.update(this) { it.copy(shape = Polygon(points).serialize(), mode = ClickMode.FREEFORM) }
+            }
+        }.also { wm.addView(it, params) }
+    }
+
     /** Pendant les clics, le cadre et la cible laissent passer le toucher. */
     private fun setOverlaysTouchable(touchable: Boolean) {
         zone?.let { z ->
@@ -198,6 +250,7 @@ class AutoClickService : AccessibilityService(), SharedPreferences.OnSharedPrefe
             t.params.flags = baseFlags(touchable)
             wm.updateViewLayout(t, t.params)
         }
+        shapeView?.running = !touchable
     }
 
     override fun onSharedPreferenceChanged(prefs: SharedPreferences?, key: String?) {
@@ -208,23 +261,42 @@ class AutoClickService : AccessibilityService(), SharedPreferences.OnSharedPrefe
         if (old.mode != config.mode) {
             stop()
             applyMode()
-        } else if (config.mode == ClickMode.ZONE) {
-            ensureZone()
         } else {
-            ensureTarget()
+            when (config.mode) {
+                ClickMode.ZONE -> ensureZone()
+                ClickMode.POINT -> ensureTarget()
+                ClickMode.FREEFORM -> ensureShape()
+            }
         }
     }
 
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
         // Rotation : on ramène le cadre et la cible dans l'écran.
-        if (panel != null) handler.postDelayed({ if (config.mode == ClickMode.ZONE) ensureZone() else ensureTarget() }, 300)
+        if (panel != null) handler.postDelayed({
+            when (config.mode) {
+                ClickMode.ZONE -> ensureZone()
+                ClickMode.POINT -> ensureTarget()
+                ClickMode.FREEFORM -> {
+                    shapeView?.let { v ->
+                        val (sw, sh) = screenSize(wm)
+                        val p = v.layoutParams as WindowManager.LayoutParams
+                        p.width = sw; p.height = sh
+                        wm.updateViewLayout(v, p)
+                    }
+                }
+            }
+        }, 300)
     }
 
     // --- Clics -----------------------------------------------------------------------------------
 
     fun start() {
-        if (_running.value || panel == null) return
+        if (_running.value || panel == null || drawOverlay != null) return
+        if (config.mode == ClickMode.FREEFORM && Polygon.parse(config.shape) == null) {
+            startDrawing()
+            return
+        }
         _running.value = true
         clicks = 0
         startedAt = SystemClock.elapsedRealtime()
@@ -264,6 +336,11 @@ class AutoClickService : AccessibilityService(), SharedPreferences.OnSharedPrefe
                 val exclude = listOfNotNull(panel?.let { screenArea(it) })
                 planner.next(screenArea(z), config.pattern, config.tapsPerCycle, dp(config.gridStepDp.toFloat()), exclude)
             }
+            ClickMode.FREEFORM -> {
+                val shape = Polygon.parse(config.shape) ?: return
+                val exclude = listOfNotNull(panel?.let { screenArea(it) })
+                planner.next(shape, config.pattern, config.tapsPerCycle, dp(config.gridStepDp.toFloat()), exclude)
+            }
         }
         if (taps.isEmpty()) return
 
@@ -278,6 +355,7 @@ class AutoClickService : AccessibilityService(), SharedPreferences.OnSharedPrefe
         clicks += taps.size
         panel?.setCount(clicks)
         zone?.showTaps(taps)
+        shapeView?.showTaps(taps)
         target?.pulse()
 
         val elapsed = (SystemClock.elapsedRealtime() - startedAt) / 1000

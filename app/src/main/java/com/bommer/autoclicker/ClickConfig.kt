@@ -3,7 +3,8 @@ package com.bommer.autoclicker
 import android.content.Context
 import android.content.SharedPreferences
 
-enum class ClickMode { ZONE, POINT }
+/** ZONE = cadre rectangulaire, FREEFORM = contour tracé au doigt, POINT = cible unique. */
+enum class ClickMode { ZONE, FREEFORM, POINT }
 
 /** Répartition des clics dans le cadre. */
 enum class ZonePattern { RANDOM, GRID }
@@ -27,6 +28,8 @@ data class ClickConfig(
     val zoneH: Int = -1,
     val pointX: Int = -1,
     val pointY: Int = -1,
+    /** Contour libre sérialisé (voir [Polygon.serialize]). */
+    val shape: String = "",
 )
 
 /** Persistance partagée entre l'écran de réglages et le service. */
@@ -54,6 +57,7 @@ object ConfigStore {
             zoneH = p.getInt("zoneH", d.zoneH),
             pointX = p.getInt("pointX", d.pointX),
             pointY = p.getInt("pointY", d.pointY),
+            shape = p.getString("shape", d.shape) ?: "",
         )
     }
 
@@ -74,6 +78,7 @@ object ConfigStore {
             .putInt("zoneH", c.zoneH)
             .putInt("pointX", c.pointX)
             .putInt("pointY", c.pointY)
+            .putString("shape", c.shape)
             .apply()
     }
 

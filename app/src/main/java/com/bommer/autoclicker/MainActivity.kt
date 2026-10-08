@@ -32,6 +32,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Switch
@@ -51,7 +52,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.LifecycleResumeEffect
@@ -65,7 +69,7 @@ private val Card = Color(0xFF181C36)
 private val Dim = Color(0xFFA9AFD6)
 
 /** Valeurs proposées par les curseurs. */
-private val INTERVALS = listOf(1, 5, 10, 20, 33, 50, 75, 100, 150, 200, 300, 500, 750, 1000, 1500, 2000, 3000, 5000, 10000)
+private val INTERVALS = listOf(1, 5, 10, 20, 33, 50, 75, 100, 150, 200, 300, 500, 750, 1000, 1500, 2000, 3000, 5000, 10000, 30000, 60000)
 private val STOP_CLICKS = listOf(0, 10, 25, 50, 100, 250, 500, 1000, 2500, 5000, 10000, 50000)
 private val STOP_SECONDS = listOf(0, 10, 30, 60, 120, 300, 600, 1800, 3600, 7200)
 
@@ -163,8 +167,46 @@ private fun SettingsScreen() {
         // --- Mode ----------------------------------------------------------------------------------
         Title("Mode")
         Choice(
-            listOf("Cadre (zone)" to (cfg.mode == ClickMode.ZONE), "Point unique" to (cfg.mode == ClickMode.POINT)),
-        ) { i -> update { it.copy(mode = if (i == 0) ClickMode.ZONE else ClickMode.POINT) } }
+            listOf(
+                "Cadre" to (cfg.mode == ClickMode.ZONE),
+                "Contour libre" to (cfg.mode == ClickMode.FREEFORM),
+                "Point" to (cfg.mode == ClickMode.POINT),
+            ),
+        ) { i -> update { it.copy(mode = ClickMode.entries[i]) } }
+
+        if (cfg.mode == ClickMode.FREEFORM) {
+            val shape = Polygon.parse(cfg.shape)
+            Title("Contour de la zone")
+            Section {
+                Text(
+                    "Trace au doigt le contour exact de la zone où cliquer (n'importe quelle forme). " +
+                        "Les clics tombent uniquement à l'intérieur.",
+                    color = Dim, fontSize = 14.sp,
+                )
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    if (shape != null) "✓ Contour enregistré (${shape.bounds.width.toInt()}×${shape.bounds.height.toInt()} px)"
+                    else "Aucun contour pour l'instant",
+                    color = if (shape != null) Mint else Color(0xFFFFB74D), fontWeight = FontWeight.Bold,
+                )
+                Spacer(Modifier.height(12.dp))
+                Button(
+                    {
+                        val s = AutoClickService.instance
+                        if (s == null) {
+                            disclosure = true
+                        } else {
+                            s.startDrawing()
+                            moveTaskToBack(ctx)
+                        }
+                    },
+                    Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF8A5CFF)),
+                ) { Text(if (shape != null) "Redessiner le contour" else "Dessiner le contour", fontWeight = FontWeight.Bold) }
+                Spacer(Modifier.height(4.dp))
+                Text("Astuce : le bouton violet ✎ du panneau flottant permet aussi de redessiner.", color = Dim, fontSize = 13.sp)
+            }
+        }
 
         if (cfg.mode == ClickMode.ZONE) {
             val zone = cfg.resolvedZone(sw, sh, minPx)
@@ -206,7 +248,9 @@ private fun SettingsScreen() {
                     Chip("Par défaut", Modifier.weight(1f)) { update { it.copy(zoneX = -1, zoneY = -1, zoneW = -1, zoneH = -1) } }
                 }
             }
+        }
 
+        if (cfg.mode != ClickMode.POINT) {
             Title("Répartition des clics")
             Choice(
                 listOf("Aléatoire" to (cfg.pattern == ZonePattern.RANDOM), "Balayage (grille)" to (cfg.pattern == ZonePattern.GRID)),
@@ -214,8 +258,8 @@ private fun SettingsScreen() {
             Spacer(Modifier.height(8.dp))
             Section {
                 Text(
-                    if (cfg.pattern == ZonePattern.RANDOM) "Chaque clic tombe à un endroit au hasard dans le cadre."
-                    else "Le cadre est parcouru ligne par ligne : chaque case de la grille est cliquée, puis on recommence.",
+                    if (cfg.pattern == ZonePattern.RANDOM) "Chaque clic tombe à un endroit au hasard dans la zone."
+                    else "La zone est parcourue ligne par ligne : chaque case de la grille est cliquée, puis on recommence.",
                     color = Dim, fontSize = 14.sp,
                 )
                 if (cfg.pattern == ZonePattern.GRID) {
@@ -224,12 +268,28 @@ private fun SettingsScreen() {
                         update { it.copy(gridStepDp = v.roundToInt()) }
                     }
                 }
+            }
+
+            Title("Clics simultanés")
+            Section {
+                Text(
+                    "Nombre de clics envoyés exactement au même instant, à des endroits différents de la zone.",
+                    color = Dim, fontSize = 14.sp,
+                )
+                Spacer(Modifier.height(8.dp))
+                Stepper(
+                    "${cfg.tapsPerCycle} clic${if (cfg.tapsPerCycle > 1) "s" else ""} à la fois",
+                    onMinus = { update { it.copy(tapsPerCycle = (it.tapsPerCycle - 1).coerceAtLeast(1)) } },
+                    onPlus = { update { it.copy(tapsPerCycle = (it.tapsPerCycle + 1).coerceAtMost(ClickPlanner.MAX_TAPS)) } },
+                )
                 LabeledSlider(
-                    "Clics simultanés", "${cfg.tapsPerCycle} doigt${if (cfg.tapsPerCycle > 1) "s" else ""}",
+                    "", "max ${ClickPlanner.MAX_TAPS}",
                     cfg.tapsPerCycle.toFloat(), 1f..ClickPlanner.MAX_TAPS.toFloat(), steps = ClickPlanner.MAX_TAPS - 2,
                 ) { v -> update { it.copy(tapsPerCycle = v.roundToInt()) } }
             }
-        } else {
+        }
+
+        if (cfg.mode == ClickMode.POINT) {
             Title("Point unique")
             Section {
                 Text("Fais glisser la cible bleue à l'écran à l'endroit où cliquer.", color = Dim, fontSize = 14.sp)
@@ -245,6 +305,12 @@ private fun SettingsScreen() {
                 "Intervalle entre les clics", "${cfg.intervalMs} ms · ≈ ${"%.1f".format(perSecond)} clics/s",
                 idx.toFloat(), 0f..INTERVALS.lastIndex.toFloat(), steps = INTERVALS.size - 2,
             ) { v -> update { it.copy(intervalMs = INTERVALS[v.roundToInt()]) } }
+            ExactNumber(
+                label = "Temps exact entre chaque clic (ms)",
+                value = cfg.intervalMs,
+                range = 1..600_000,
+            ) { ms -> update { it.copy(intervalMs = ms) } }
+            Spacer(Modifier.height(8.dp))
             LabeledSlider("Durée d'appui", "${cfg.tapDurationMs} ms", cfg.tapDurationMs.toFloat(), 1f..500f) { v ->
                 update { it.copy(tapDurationMs = v.roundToInt()) }
             }
@@ -274,7 +340,7 @@ private fun SettingsScreen() {
             listOf(
                 "1. Active le service d'accessibilité (une seule fois).",
                 "2. Le panneau flottant apparaît par-dessus tes applis.",
-                "3. Place et redimensionne le cadre (ou la cible).",
+                "3. Place et redimensionne le cadre, trace un contour libre, ou place la cible.",
                 "4. Appuie sur ▶ : les clics démarrent. Appuie sur ⏸ pour arrêter.",
                 "Le panneau lui-même n'est jamais cliqué, même s'il est dans le cadre.",
             ).forEach { Text(it, color = Dim, fontSize = 14.sp, modifier = Modifier.padding(vertical = 3.dp)) }
@@ -306,6 +372,55 @@ private fun SettingsScreen() {
 
 private fun moveTaskToBack(ctx: android.content.Context) {
     (ctx as? ComponentActivity)?.moveTaskToBack(true)
+}
+
+@Composable
+private fun Stepper(label: String, onMinus: () -> Unit, onPlus: () -> Unit) {
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        RoundButton("−", onMinus)
+        Text(
+            label, color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Black,
+            textAlign = TextAlign.Center, modifier = Modifier.weight(1f),
+        )
+        RoundButton("+", onPlus)
+    }
+}
+
+@Composable
+private fun RoundButton(label: String, onClick: () -> Unit) {
+    Box(
+        Modifier
+            .size(48.dp)
+            .clip(CircleShape)
+            .background(Accent)
+            .clickable { onClick() },
+        contentAlignment = Alignment.Center,
+    ) { Text(label, color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Black) }
+}
+
+/** Champ numérique : la valeur est appliquée dès qu'elle est valide. */
+@Composable
+private fun ExactNumber(label: String, value: Int, range: IntRange, onValue: (Int) -> Unit) {
+    var text by remember(value) { mutableStateOf(value.toString()) }
+    OutlinedTextField(
+        value = text,
+        onValueChange = { t ->
+            text = t.filter { it.isDigit() }.take(6)
+            text.toIntOrNull()?.takeIf { it in range }?.let(onValue)
+        },
+        label = { Text(label) },
+        singleLine = true,
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+        isError = text.toIntOrNull()?.let { it !in range } ?: true,
+        supportingText = {
+            val ms = text.toIntOrNull()
+            Text(
+                if (ms == null || ms !in range) "Entre ${range.first} et ${range.last} ms"
+                else "= ${"%.2f".format(ms / 1000f)} s · ${"%.1f".format(1000f / ms)} cycles/s",
+            )
+        },
+        modifier = Modifier.fillMaxWidth(),
+    )
 }
 
 private fun formatDuration(s: Int) = when {

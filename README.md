@@ -10,11 +10,16 @@ Application Android qui clique automatiquement à ta place, **sans root**.
   - *Aléatoire* : chaque clic à un endroit au hasard du cadre ;
   - *Balayage (grille)* : le cadre est parcouru ligne par ligne en serpentin, chaque case est
     cliquée puis on recommence (espacement réglable de 8 à 200 dp).
-- **Clics simultanés** : jusqu'à 10 doigts à la fois à chaque cycle.
+- **Mode Contour libre** : trace au doigt le contour exact de la zone (n'importe quelle forme,
+  même en creux). Les clics tombent uniquement à l'intérieur. Bouton ✎ du panneau pour redessiner.
+- **Clics simultanés** : de 1 à 10 clics envoyés au même instant à des endroits différents
+  de la zone (boutons − / + ou curseur).
+- **Temps entre chaque clic** : curseur rapide ou valeur exacte en millisecondes (1 ms à 10 min).
 - **Mode Point** : une cible déplaçable pour cliquer toujours au même endroit.
-- **Vitesse** : intervalle de 1 ms à 10 s, durée d'appui réglable, rythme irrégulier (±25 %).
+- **Vitesse** : durée d'appui réglable, rythme irrégulier (±25 %).
 - **Arrêt automatique** après un nombre de clics ou une durée.
-- **Panneau flottant** déplaçable : ▶/⏸, compteur de clics, changement de mode, réglages, fermeture.
+- **Panneau flottant** déplaçable : ▶/⏸, compteur de clics, changement de mode
+  (cadre → contour libre → point), dessin du contour, réglages, fermeture.
   Le panneau n'est jamais cliqué, même s'il est dans le cadre.
 - Tailles rapides : plein écran, moitié haute/basse, petit carré, centrer.
 - Pendant les clics, le cadre devient « traversable » et affiche une onde à chaque clic.
@@ -31,10 +36,11 @@ d'Android pour simuler des gestes (`dispatchGesture`) et afficher des fenêtres 
 ```
 app/src/main/java/com/bommer/autoclicker/
 ├── AutoClickService.kt   service d'accessibilité : fenêtres flottantes + envoi des clics
-├── ClickPlanner.kt       choix des points dans le cadre (aléatoire / grille, exclusions) — testé
+├── ClickPlanner.kt       choix des points dans la zone (aléatoire / grille, exclusions) — testé
+├── Polygon.kt            contour libre : point dans le polygone, simplification du tracé — testé
 ├── ClickConfig.kt        réglages partagés (SharedPreferences)
 ├── MainActivity.kt       écran de réglages (Jetpack Compose)
-└── overlay/              cadre redimensionnable, cible, panneau flottant
+└── overlay/              cadre redimensionnable, écran de dessin du contour, cible, panneau
 ```
 
 ## Compiler

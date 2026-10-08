@@ -33,21 +33,35 @@ class ClickPlanner(private val random: Random = Random.Default) {
         count: Int,
         stepPx: Float,
         exclude: List<Area> = emptyList(),
+        shape: Polygon? = null,
     ): List<Tap> {
         if (zone.width <= 1f || zone.height <= 1f) return emptyList()
         val n = count.coerceIn(1, MAX_TAPS)
+        this.shape = shape
         return when (pattern) {
             ZonePattern.RANDOM -> randomTaps(zone, n, exclude)
             ZonePattern.GRID -> gridTaps(zone, n, stepPx, exclude)
         }
     }
 
-    private fun excluded(x: Float, y: Float, exclude: List<Area>) = exclude.any { it.contains(x, y) }
+    /** Contour libre : seuls les points à l'intérieur sont acceptés. */
+    fun next(
+        shape: Polygon,
+        pattern: ZonePattern,
+        count: Int,
+        stepPx: Float,
+        exclude: List<Area> = emptyList(),
+    ): List<Tap> = next(shape.bounds, pattern, count, stepPx, exclude, shape)
+
+    private var shape: Polygon? = null
+
+    private fun excluded(x: Float, y: Float, exclude: List<Area>) =
+        exclude.any { it.contains(x, y) } || shape?.contains(x, y) == false
 
     private fun randomTaps(zone: Area, n: Int, exclude: List<Area>): List<Tap> {
         val out = ArrayList<Tap>(n)
         repeat(n) {
-            for (attempt in 0 until 25) {
+            for (attempt in 0 until 60) {
                 val x = zone.left + MARGIN + random.nextFloat() * (zone.width - 2 * MARGIN)
                 val y = zone.top + MARGIN + random.nextFloat() * (zone.height - 2 * MARGIN)
                 if (!excluded(x, y, exclude)) {
