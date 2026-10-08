@@ -154,7 +154,7 @@ class DrawOverlay(
         text = label
         setTextColor(0xFFFFFFFF.toInt())
         textSize = 16f
-        isFakeBoldText = true
+        setTypeface(typeface, android.graphics.Typeface.BOLD)
         gravity = Gravity.CENTER
         val h = context.dp(14f).toInt()
         setPadding(h * 2, h, h * 2, h)
