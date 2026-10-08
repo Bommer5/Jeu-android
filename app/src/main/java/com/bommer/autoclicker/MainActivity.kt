@@ -319,6 +319,26 @@ private fun SettingsScreen() {
             }
         }
 
+        // --- Arrêt d'urgence ---------------------------------------------------------------------------
+        Title("Arrêt d'urgence")
+        Section {
+            Text(
+                "Quand les clics vont très vite, Android annule les appuis de ton doigt : utilise plutôt un de ces moyens.",
+                color = Dim, fontSize = 14.sp,
+            )
+            Spacer(Modifier.height(6.dp))
+            Toggle("Bouton volume", "Appuie sur volume + ou − pour tout arrêter", cfg.stopOnVolume) { on ->
+                update { it.copy(stopOnVolume = on) }
+            }
+            Toggle("Secouer le téléphone", "Deux secousses franches arrêtent les clics", cfg.stopOnShake) { on ->
+                update { it.copy(stopOnShake = on) }
+            }
+            Text(
+                "Toucher le panneau flottant arrête aussi immédiatement, dès que le doigt se pose.",
+                color = Dim, fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp),
+            )
+        }
+
         // --- Arrêt automatique -------------------------------------------------------------------------
         Title("Arrêt automatique")
         Section {
@@ -341,7 +361,8 @@ private fun SettingsScreen() {
                 "1. Active le service d'accessibilité (une seule fois).",
                 "2. Le panneau flottant apparaît par-dessus tes applis.",
                 "3. Place et redimensionne le cadre, trace un contour libre, ou place la cible.",
-                "4. Appuie sur ▶ : les clics démarrent. Appuie sur ⏸ pour arrêter.",
+                "4. Appuie sur ▶ : les clics démarrent.",
+                "5. Pour arrêter : bouton volume, secousse, ou un simple toucher sur le panneau.",
                 "Le panneau lui-même n'est jamais cliqué, même s'il est dans le cadre.",
             ).forEach { Text(it, color = Dim, fontSize = 14.sp, modifier = Modifier.padding(vertical = 3.dp)) }
         }

@@ -6,6 +6,11 @@ import android.content.Intent
 import android.content.SharedPreferences
 import android.content.res.Configuration
 import android.graphics.Path
+import android.hardware.Sensor
+import android.hardware.SensorEvent
+import android.hardware.SensorEventListener
+import android.hardware.SensorManager
+import android.view.KeyEvent
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
@@ -44,6 +49,26 @@ class AutoClickService : AccessibilityService(), SharedPreferences.OnSharedPrefe
     private var shapeView: ShapeView? = null
     private var drawOverlay: DrawOverlay? = null
 
+    private var sensors: SensorManager? = null
+    private var lastShake = 0L
+    private var shakeCount = 0
+
+    /** Détection de secousse : deux pics d'accélération > 2,3 g en moins d'une seconde. */
+    private val shakeListener = object : SensorEventListener {
+        override fun onSensorChanged(e: SensorEvent) {
+            val (x, y, z) = Triple(e.values[0], e.values[1], e.values[2])
+            val g = kotlin.math.sqrt(x * x + y * y + z * z) / SensorManager.GRAVITY_EARTH
+            if (g < 2.3f) return
+            val now = SystemClock.elapsedRealtime()
+            if (now - lastShake < 150) return
+            shakeCount = if (now - lastShake < 1000) shakeCount + 1 else 1
+            lastShake = now
+            if (shakeCount >= 2) emergencyStop("téléphone secoué")
+        }
+
+        override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) = Unit
+    }
+
     private var clicks = 0L
     private var startedAt = 0L
 
@@ -66,6 +91,20 @@ class AutoClickService : AccessibilityService(), SharedPreferences.OnSharedPrefe
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) = Unit
+
+    /** Arrêt d'urgence par les boutons de volume (ils ne sont pas bloqués par les clics). */
+    override fun onKeyEvent(event: KeyEvent): Boolean {
+        if (!_running.value || !config.stopOnVolume) return false
+        if (event.keyCode != KeyEvent.KEYCODE_VOLUME_DOWN && event.keyCode != KeyEvent.KEYCODE_VOLUME_UP) return false
+        if (event.action == KeyEvent.ACTION_DOWN) emergencyStop("bouton volume")
+        return true // on consomme l'appui pour ne pas changer le volume
+    }
+
+    private fun emergencyStop(reason: String) {
+        if (!_running.value) return
+        stop()
+        Toast.makeText(this, "Auto Clicker arrêté ($reason)", Toast.LENGTH_SHORT).show()
+    }
 
     override fun onInterrupt() = stop()
 
@@ -304,6 +343,13 @@ class AutoClickService : AccessibilityService(), SharedPreferences.OnSharedPrefe
         panel?.setRunning(true)
         panel?.setCount(0)
         setOverlaysTouchable(false)
+        if (config.stopOnShake) {
+            val sm = sensors ?: (getSystemService(SENSOR_SERVICE) as? SensorManager)?.also { sensors = it }
+            sm?.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)?.let {
+                shakeCount = 0
+                sm.registerListener(shakeListener, it, SensorManager.SENSOR_DELAY_GAME)
+            }
+        }
         // Petit délai pour laisser les fenêtres devenir « traversables ».
         handler.postDelayed(tick, 150)
     }
@@ -312,6 +358,7 @@ class AutoClickService : AccessibilityService(), SharedPreferences.OnSharedPrefe
         if (!_running.value) return
         _running.value = false
         handler.removeCallbacks(tick)
+        sensors?.unregisterListener(shakeListener)
         panel?.setRunning(false)
         setOverlaysTouchable(true)
     }

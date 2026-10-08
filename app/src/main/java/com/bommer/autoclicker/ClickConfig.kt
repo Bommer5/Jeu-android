@@ -30,6 +30,10 @@ data class ClickConfig(
     val pointY: Int = -1,
     /** Contour libre sérialisé (voir [Polygon.serialize]). */
     val shape: String = "",
+    /** Arrêt d'urgence : un appui sur un bouton de volume arrête les clics. */
+    val stopOnVolume: Boolean = true,
+    /** Arrêt d'urgence : secouer le téléphone arrête les clics. */
+    val stopOnShake: Boolean = true,
 )
 
 /** Persistance partagée entre l'écran de réglages et le service. */
@@ -58,6 +62,8 @@ object ConfigStore {
             pointX = p.getInt("pointX", d.pointX),
             pointY = p.getInt("pointY", d.pointY),
             shape = p.getString("shape", d.shape) ?: "",
+            stopOnVolume = p.getBoolean("stopOnVolume", d.stopOnVolume),
+            stopOnShake = p.getBoolean("stopOnShake", d.stopOnShake),
         )
     }
 
@@ -79,6 +85,8 @@ object ConfigStore {
             .putInt("pointX", c.pointX)
             .putInt("pointY", c.pointY)
             .putString("shape", c.shape)
+            .putBoolean("stopOnVolume", c.stopOnVolume)
+            .putBoolean("stopOnShake", c.stopOnShake)
             .apply()
     }
 

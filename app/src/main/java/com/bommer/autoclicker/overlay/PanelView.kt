@@ -80,7 +80,22 @@ class PanelView(
         isClickable = true
     }
 
+    private var running = false
+
+    /**
+     * Pendant les clics, chaque geste automatique annule le toucher du doigt : un « clic » normal
+     * (appui + relâchement) n'aboutit jamais. On arrête donc dès que le doigt se pose sur le panneau.
+     */
+    override fun onInterceptTouchEvent(e: MotionEvent): Boolean {
+        if (running && e.actionMasked == MotionEvent.ACTION_DOWN) {
+            onPlay()
+            return true
+        }
+        return super.onInterceptTouchEvent(e)
+    }
+
     fun setRunning(running: Boolean) {
+        this.running = running
         play.setImageResource(if (running) R.drawable.ic_pause else R.drawable.ic_play)
         (play.background as GradientDrawable).setColor(if (running) 0xFFFF5B5B.toInt() else 0xFF2FC56E.toInt())
         mode.alpha = if (running) 0.4f else 1f

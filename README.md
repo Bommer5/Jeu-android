@@ -17,6 +17,9 @@ Application Android qui clique automatiquement à ta place, **sans root**.
 - **Temps entre chaque clic** : curseur rapide ou valeur exacte en millisecondes (1 ms à 10 min).
 - **Mode Point** : une cible déplaçable pour cliquer toujours au même endroit.
 - **Vitesse** : durée d'appui réglable, rythme irrégulier (±25 %).
+- **Arrêt d'urgence** qui marche même pendant un spam de clics : bouton volume + ou −,
+  secouer le téléphone, ou simple toucher sur le panneau flottant (déclenché dès que le doigt
+  se pose, car Android annule les appuis de l'utilisateur à chaque clic automatique).
 - **Arrêt automatique** après un nombre de clics ou une durée.
 - **Panneau flottant** déplaçable : ▶/⏸, compteur de clics, changement de mode
   (cadre → contour libre → point), dessin du contour, réglages, fermeture.
