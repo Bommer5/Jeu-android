@@ -97,7 +97,7 @@ fun WheelScreen(c: AppController, profile: Profile, rewardedReady: Boolean, onBa
     val free = Wheel.hasFreeSpin(profile, today)
     val adLeft = Wheel.adSpinsLeft(profile, today)
 
-    ScreenScaffold("Roue de la fortune", profile.coins, onBack) {
+    ScreenScaffold("Roue", profile.coins, onBack) {
         Column(
             Modifier
                 .fillMaxWidth()

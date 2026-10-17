@@ -77,7 +77,7 @@ fun ScreenScaffold(
         ) {
             IconBubble(Icons.AutoMirrored.Rounded.ArrowBack, onBack, size = 46.dp)
             Spacer(Modifier.width(14.dp))
-            Text(title, style = titleStyle(30.sp), modifier = Modifier.weight(1f), maxLines = 1)
+            Text(title, style = titleStyle(if (title.length > 10) 24.sp else 30.sp), modifier = Modifier.weight(1f), maxLines = 1)
             if (coins != null) CoinCounter(coins, onPlus = onCoins)
         }
         content()
