@@ -211,6 +211,6 @@ class AppController(
 
     companion object {
         /** À remplacer par l'URL publique de docs/privacy-policy.md. */
-        const val PRIVACY_URL = "https://github.com/Bommer5/Jeu-android/blob/main/docs/privacy-policy.md"
+        const val PRIVACY_URL = "https://sites.google.com/view/stacktower-nathan-privacy"
     }
 }

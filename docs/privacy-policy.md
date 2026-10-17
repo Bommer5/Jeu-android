@@ -1,8 +1,10 @@
 # Politique de confidentialité — Stack Tower
 
-*Dernière mise à jour : [DATE]*
+> Version publiée : https://sites.google.com/view/stacktower-nathan-privacy
 
-Stack Tower (« l'application ») est éditée par [VOTRE NOM / SOCIÉTÉ], contact : [VOTRE E-MAIL].
+*Dernière mise à jour : 17 octobre 2026*
+
+Stack Tower (« l'application ») est éditée par Nathan Brico, contact : nathan23.brico@gmail.com.
 
 ## Données collectées par l'application
 L'application ne demande ni compte ni données personnelles. Votre progression (record, pièces,
@@ -21,8 +23,8 @@ Politique de Google : https://policies.google.com/technologies/ads
 Les paiements sont traités par Google Play. Nous ne recevons jamais vos coordonnées bancaires.
 
 ## Enfants
-L'application ne s'adresse pas spécifiquement aux enfants de moins de 13 ans.
+L'application ne s'adresse pas aux enfants de moins de 13 ans.
 
 ## Vos droits
 Conformément au RGPD, vous pouvez exercer vos droits d'accès, de rectification et de suppression en
-nous écrivant à [VOTRE E-MAIL]. Désinstaller l'application supprime toutes les données locales.
+nous écrivant à nathan23.brico@gmail.com. Désinstaller l'application supprime toutes les données locales.
